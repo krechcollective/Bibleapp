@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api, type PlanDay } from '../lib/api'
 import { useAppStore } from '../store/appStore'
 
 export function PlanView() {
   const [days, setDays] = useState<PlanDay[]>([])
   const [error, setError] = useState<string | null>(null)
-  const setPosition = useAppStore((s) => s.setPosition)
+  const setReadingMode = useAppStore((s) => s.setReadingMode)
+  const setPendingPlanDay = useAppStore((s) => s.setPendingPlanDay)
+  const navigate = useNavigate()
 
   useEffect(() => {
     api
@@ -22,6 +25,12 @@ export function PlanView() {
     } catch {
       setDays((prev) => prev.map((d) => (d.day === day.day ? { ...d, completed: !completed } : d)))
     }
+  }
+
+  function readDay(day: PlanDay) {
+    setReadingMode('plan')
+    setPendingPlanDay(day.day)
+    navigate('/')
   }
 
   const completedCount = days.filter((d) => d.completed).length
@@ -46,18 +55,21 @@ export function PlanView() {
       <ul className="plan-day-list">
         {days.map((d) => (
           <li key={d.day} className={`plan-day ${d.completed ? 'completed' : ''}`}>
-            <label>
-              <input type="checkbox" checked={d.completed} onChange={() => toggle(d)} />
-              <span className="plan-day-num">Day {d.day}</span>
+            <div className="plan-day-row">
+              <input
+                type="checkbox"
+                checked={d.completed}
+                onChange={() => toggle(d)}
+                aria-label={`Mark day ${d.day} complete`}
+              />
+              <button className="plan-day-num" onClick={() => readDay(d)}>
+                Day {d.day}
+              </button>
               <span className="plan-day-date">{d.date}</span>
-            </label>
+            </div>
             <div className="plan-day-passages">
               {d.passages.map((p, i) => (
-                <button
-                  key={i}
-                  className="plan-passage-link"
-                  onClick={() => setPosition(p.book, p.chapter)}
-                >
+                <button key={i} className="plan-passage-link" onClick={() => readDay(d)}>
                   {p.book} {p.chapter}
                   {p.verseStart ? `:${p.verseStart}-${p.verseEnd ?? p.verseStart}` : ''}
                 </button>

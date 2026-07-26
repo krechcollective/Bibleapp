@@ -10,6 +10,8 @@ export function Layout() {
   const currentBook = useAppStore((s) => s.currentBook)
   const currentChapter = useAppStore((s) => s.currentChapter)
   const setPosition = useAppStore((s) => s.setPosition)
+  const readingMode = useAppStore((s) => s.readingMode)
+  const setReadingMode = useAppStore((s) => s.setReadingMode)
 
   return (
     <div className="app-shell">
@@ -17,6 +19,21 @@ export function Layout() {
         <button className="header-btn jump-btn" onClick={() => setJumpOpen(true)}>
           {currentBook} {currentChapter} ▾
         </button>
+
+        <div className="mode-toggle" title="Reading order">
+          <button
+            className={readingMode === 'canonical' ? 'mode-toggle-active' : ''}
+            onClick={() => setReadingMode('canonical')}
+          >
+            Bible
+          </button>
+          <button
+            className={readingMode === 'plan' ? 'mode-toggle-active' : ''}
+            onClick={() => setReadingMode('plan')}
+          >
+            Plan
+          </button>
+        </div>
 
         <nav className="header-nav">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-active' : '')}>
@@ -49,7 +66,10 @@ export function Layout() {
 
       {jumpOpen && (
         <JumpTo
-          onJump={(book, chapter) => setPosition(book, chapter)}
+          onJump={(book, chapter) => {
+            setReadingMode('canonical')
+            setPosition(book, chapter)
+          }}
           onClose={() => setJumpOpen(false)}
         />
       )}

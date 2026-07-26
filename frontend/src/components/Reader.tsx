@@ -1,79 +1,112 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ALL_CHAPTERS, chapterRefFor } from '../data/books'
 import { ChapterView } from './ChapterView'
 import { useAppStore } from '../store/appStore'
 import { api, type PlanDay } from '../lib/api'
+import { flattenPlanDays, type PlanChapterEntry } from '../lib/planUtils'
 
-interface DayMarker {
-  day: number
-  date: string
-  completed: boolean
+interface SequenceItem {
+  key: string
+  book: string
+  chapter: number
+  dayDivider?: string
+  onDayComplete?: () => void
 }
 
 export function Reader() {
   const parentRef = useRef<HTMLDivElement>(null)
+  const readingMode = useAppStore((s) => s.readingMode)
   const currentBook = useAppStore((s) => s.currentBook)
   const currentChapter = useAppStore((s) => s.currentChapter)
   const setPosition = useAppStore((s) => s.setPosition)
+  const planIndex = useAppStore((s) => s.planIndex)
+  const setPlanIndex = useAppStore((s) => s.setPlanIndex)
+  const pendingPlanDay = useAppStore((s) => s.pendingPlanDay)
+  const setPendingPlanDay = useAppStore((s) => s.setPendingPlanDay)
 
-  // Maps "Book|chapter" (of a day's first passage) to that day's divider info.
-  const [dayMarkers, setDayMarkers] = useState<Map<string, DayMarker>>(new Map())
+  const [days, setDays] = useState<PlanDay[]>([])
 
   useEffect(() => {
     api
       .getPlan()
-      .then((days: PlanDay[]) => {
-        const map = new Map<string, DayMarker>()
-        for (const d of days) {
-          const first = d.passages[0]
-          if (!first) continue
-          map.set(`${first.book}|${first.chapter}`, { day: d.day, date: d.date, completed: d.completed })
-        }
-        setDayMarkers(map)
-      })
-      .catch(() => setDayMarkers(new Map()))
+      .then(setDays)
+      .catch(() => setDays([]))
   }, [])
 
-  async function toggleDay(marker: DayMarker) {
-    const completed = !marker.completed
-    setDayMarkers((prev) => {
-      const next = new Map(prev)
-      for (const [key, val] of next) {
-        if (val.day === marker.day) next.set(key, { ...val, completed })
-      }
-      return next
-    })
-    await api.markDayComplete(marker.day, completed).catch(() => {})
+  const flattenedPlan = useMemo(() => flattenPlanDays(days), [days])
+
+  async function toggleDay(entry: PlanChapterEntry) {
+    const completed = !entry.completed
+    setDays((prev) => prev.map((d) => (d.day === entry.day ? { ...d, completed } : d)))
+    await api.markDayComplete(entry.day, completed).catch(() => {})
   }
 
+  const sequence: SequenceItem[] = useMemo(() => {
+    if (readingMode === 'plan') {
+      return flattenedPlan.map((entry) => ({
+        key: entry.key,
+        book: entry.book,
+        chapter: entry.chapter,
+        dayDivider: entry.isFirstOfDay
+          ? `Day ${entry.day} — ${entry.date}${entry.completed ? ' ✓' : ''}`
+          : undefined,
+        onDayComplete: entry.isFirstOfDay ? () => toggleDay(entry) : undefined,
+      }))
+    }
+    return ALL_CHAPTERS.map((ref) => ({ key: `${ref.book}-${ref.chapter}`, book: ref.book, chapter: ref.chapter }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readingMode, flattenedPlan])
+
   const virtualizer = useVirtualizer({
-    count: ALL_CHAPTERS.length,
+    count: sequence.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 900,
     overscan: 2,
   })
 
-  // Jump to the last-remembered position on first mount.
-  const didInitialScroll = useRef(false)
+  // Scroll to the right spot whenever the mode switches (or the plan finishes loading).
+  const lastScrolledMode = useRef<string | null>(null)
   useEffect(() => {
-    if (didInitialScroll.current) return
-    const ref = chapterRefFor(currentBook, currentChapter)
-    if (ref) {
-      didInitialScroll.current = true
-      virtualizer.scrollToIndex(ref.globalIndex, { align: 'start' })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (sequence.length === 0) return
 
-  // Expose an imperative jump for the JumpTo control via the store's position setter.
-  useEffect(() => {
-    const ref = chapterRefFor(currentBook, currentChapter)
-    if (ref && didInitialScroll.current) {
-      virtualizer.scrollToIndex(ref.globalIndex, { align: 'start' })
+    // Chapters vary wildly in height (Psalm 119 vs. Obadiah), so scrollToIndex on
+    // unmeasured items lands imprecisely — the virtualizer corrects its size
+    // estimates right after, which can shift the scroll position. Re-issuing the
+    // same scrollToIndex a frame later (the standard TanStack Virtual fix for
+    // variable-size lists) re-aligns it once real measurements are in.
+    function scrollToWithCorrection(idx: number, attemptsLeft = 5) {
+      virtualizer.scrollToIndex(idx, { align: 'start' })
+      if (attemptsLeft > 0) {
+        requestAnimationFrame(() => scrollToWithCorrection(idx, attemptsLeft - 1))
+      }
+    }
+
+    if (readingMode === 'plan') {
+      if (pendingPlanDay != null) {
+        const idx = flattenedPlan.findIndex((e) => e.day === pendingPlanDay)
+        if (idx >= 0) {
+          scrollToWithCorrection(idx)
+          setPlanIndex(idx)
+        }
+        setPendingPlanDay(null)
+        lastScrolledMode.current = readingMode
+        return
+      }
+      if (lastScrolledMode.current !== 'plan') {
+        const idx = Math.min(planIndex, sequence.length - 1)
+        scrollToWithCorrection(idx)
+        lastScrolledMode.current = 'plan'
+      }
+    } else {
+      if (lastScrolledMode.current !== 'canonical') {
+        const ref = chapterRefFor(currentBook, currentChapter)
+        if (ref) scrollToWithCorrection(ref.globalIndex)
+        lastScrolledMode.current = 'canonical'
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBook, currentChapter])
+  }, [readingMode, sequence.length, pendingPlanDay])
 
   // Track which chapter is topmost in view and persist it as "current position".
   useEffect(() => {
@@ -85,11 +118,14 @@ export function Reader() {
       raf = requestAnimationFrame(() => {
         const items = virtualizer.getVirtualItems()
         const first = items.find((i) => i.start >= el.scrollTop - 50) ?? items[0]
-        if (first) {
-          const ref = ALL_CHAPTERS[first.index]
-          if (ref && (ref.book !== currentBook || ref.chapter !== currentChapter)) {
-            setPosition(ref.book, ref.chapter)
-          }
+        if (!first) return
+        const item = sequence[first.index]
+        if (!item) return
+        if (item.book !== currentBook || item.chapter !== currentChapter) {
+          setPosition(item.book, item.chapter)
+        }
+        if (readingMode === 'plan') {
+          setPlanIndex(first.index)
         }
       })
     }
@@ -99,7 +135,7 @@ export function Reader() {
       cancelAnimationFrame(raf)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [virtualizer])
+  }, [virtualizer, sequence, readingMode])
 
   const items = virtualizer.getVirtualItems()
 
@@ -107,8 +143,8 @@ export function Reader() {
     <div ref={parentRef} className="reader-scroll">
       <div style={{ height: virtualizer.getTotalSize(), width: '100%', position: 'relative' }}>
         {items.map((item) => {
-          const ref = ALL_CHAPTERS[item.index]
-          const marker = dayMarkers.get(`${ref.book}|${ref.chapter}`)
+          const entry = sequence[item.index]
+          if (!entry) return null
           return (
             <div
               key={item.key}
@@ -123,12 +159,10 @@ export function Reader() {
               }}
             >
               <ChapterView
-                book={ref.book}
-                chapter={ref.chapter}
-                dayDivider={
-                  marker ? `Day ${marker.day} — ${marker.date}${marker.completed ? ' ✓' : ''}` : undefined
-                }
-                onDayComplete={marker ? () => toggleDay(marker) : undefined}
+                book={entry.book}
+                chapter={entry.chapter}
+                dayDivider={entry.dayDivider}
+                onDayComplete={entry.onDayComplete}
               />
             </div>
           )

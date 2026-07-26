@@ -116,6 +116,31 @@ button {
   white-space: nowrap;
 }
 
+.mode-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--paper);
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.mode-toggle button {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mode-toggle-active {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+}
+
 .header-nav {
   display: flex;
   gap: 2px;
@@ -593,15 +618,24 @@ button {
   padding: 14px 0;
 }
 
-.plan-day label {
+.plan-day-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
 }
 
 .plan-day-num {
+  font: inherit;
   font-weight: 600;
+  background: none;
+  border: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.plan-day-num:hover {
+  color: var(--accent);
 }
 
 .plan-day-date {
