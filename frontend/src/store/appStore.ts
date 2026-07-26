@@ -8,13 +8,6 @@ interface AppState {
   currentBook: string
   currentChapter: number
   setPosition: (book: string, chapter: number) => void
-
-  notesPanelOpen: boolean
-  toggleNotesPanel: () => void
-  setNotesPanelOpen: (open: boolean) => void
-
-  activeVerse: { book: string; chapter: number; verse: number } | null
-  setActiveVerse: (v: { book: string; chapter: number; verse: number } | null) => void
 }
 
 const STORAGE_KEY = 'bible-reader-position'
@@ -33,7 +26,6 @@ export const useAppStore = create<AppState>((set) => ({
   translation: 'ESV',
   setTranslation: (t) => set({ translation: t }),
 
-  ...loadInitialPosition(),
   currentBook: loadInitialPosition().book,
   currentChapter: loadInitialPosition().chapter,
   setPosition: (book, chapter) => {
@@ -44,11 +36,4 @@ export const useAppStore = create<AppState>((set) => ({
     }
     set({ currentBook: book, currentChapter: chapter })
   },
-
-  notesPanelOpen: false,
-  toggleNotesPanel: () => set((s) => ({ notesPanelOpen: !s.notesPanelOpen })),
-  setNotesPanelOpen: (open) => set({ notesPanelOpen: open }),
-
-  activeVerse: null,
-  setActiveVerse: (v) => set({ activeVerse: v }),
 }))

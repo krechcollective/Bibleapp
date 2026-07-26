@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { JumpTo } from './JumpTo'
-import { NotesPanel } from './NotesPanel'
 import { useAppStore } from '../store/appStore'
 
 export function Layout() {
@@ -11,8 +10,6 @@ export function Layout() {
   const currentBook = useAppStore((s) => s.currentBook)
   const currentChapter = useAppStore((s) => s.currentChapter)
   const setPosition = useAppStore((s) => s.setPosition)
-  const notesPanelOpen = useAppStore((s) => s.notesPanelOpen)
-  const toggleNotesPanel = useAppStore((s) => s.toggleNotesPanel)
 
   return (
     <div className="app-shell">
@@ -41,9 +38,6 @@ export function Layout() {
           >
             {translation}
           </button>
-          <button className="header-btn notes-toggle" onClick={toggleNotesPanel}>
-            {notesPanelOpen ? 'Hide notes' : 'Notes'}
-          </button>
         </div>
       </header>
 
@@ -51,7 +45,6 @@ export function Layout() {
         <main className="app-main">
           <Outlet />
         </main>
-        <NotesPanel />
       </div>
 
       {jumpOpen && (

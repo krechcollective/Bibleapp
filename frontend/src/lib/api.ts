@@ -12,13 +12,15 @@ export interface Passage {
   verses: PassageVerse[]
 }
 
+export type NoteType = 'text' | 'drawing' | 'highlight'
+
 export interface Note {
   id: string
   book: string
   chapter: number
   verseStart: number
   verseEnd: number
-  type: 'text' | 'drawing'
+  type: NoteType
   content: string
   createdAt: string
   updatedAt: string
@@ -56,7 +58,7 @@ export const api = {
     return json<Note[]>(res)
   },
 
-  async saveNote(note: Partial<Note> & { book: string; chapter: number; verseStart: number; verseEnd: number; type: 'text' | 'drawing'; content: string }): Promise<Note> {
+  async saveNote(note: Partial<Note> & { book: string; chapter: number; verseStart: number; verseEnd: number; type: NoteType; content: string }): Promise<Note> {
     const res = await fetch(`${API_BASE}/notes${note.id ? `/${note.id}` : ''}`, {
       method: note.id ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
