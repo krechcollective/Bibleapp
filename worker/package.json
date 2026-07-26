@@ -1,0 +1,20 @@
+{
+  "name": "worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker API for the Bible reader app: ESV/MSG passage proxy + D1-backed notes, plans, and settings.",
+  "type": "module",
+  "main": "src/index.ts",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply bibleapp --local",
+    "db:migrate:remote": "wrangler d1 migrations apply bibleapp --remote",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260726.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.114.0"
+  }
+}

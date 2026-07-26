@@ -1,0 +1,516 @@
+:root {
+  --paper: #faf7f0;
+  --ink: #2c2620;
+  --ink-soft: #6b6357;
+  --accent: #8a6d3b;
+  --accent-soft: rgba(138, 109, 59, 0.12);
+  --border: #e6ddc9;
+  --divider-red: #b3402f;
+  --surface: #ffffff;
+
+  --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  color-scheme: light dark;
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1b1913;
+    --ink: #ece6d8;
+    --ink-soft: #a89e8c;
+    --accent: #c9a05e;
+    --accent-soft: rgba(201, 160, 94, 0.15);
+    --border: #3a3527;
+    --surface: #242015;
+    --divider-red: #d4655a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--sans);
+}
+
+h1,
+h2 {
+  font-family: var(--serif);
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+/* ---------- App shell ---------- */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.header-btn {
+  font: inherit;
+  background: var(--accent-soft);
+  color: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.jump-btn {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+.header-nav {
+  display: flex;
+  gap: 4px;
+  margin: 0 auto;
+}
+
+.header-nav a {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.header-nav a.nav-active {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ---------- Reader ---------- */
+
+.reader-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.chapter {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px 24px 8px;
+}
+
+.chapter-heading {
+  font-size: 1.6rem;
+  text-align: center;
+  color: var(--accent);
+}
+
+.chapter-text {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.verse {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.verse:hover {
+  background: var(--accent-soft);
+}
+
+.verse-num {
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.chapter-loading,
+.chapter-error {
+  text-align: center;
+  color: var(--ink-soft);
+  padding: 24px 0;
+}
+
+.chapter-error {
+  color: var(--divider-red);
+}
+
+.day-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 32px 0 8px;
+}
+
+.day-divider-line {
+  flex: 1;
+  height: 2px;
+  background: var(--divider-red);
+}
+
+.day-divider-label {
+  color: var(--divider-red);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* ---------- Jump-to ---------- */
+
+.jump-to-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8vh;
+  z-index: 100;
+}
+
+.jump-to-panel {
+  background: var(--surface);
+  border-radius: 12px;
+  width: min(420px, 90vw);
+  max-height: 76vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.jump-to-search {
+  font: inherit;
+  padding: 14px 16px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+}
+
+.jump-to-search:focus {
+  outline: none;
+}
+
+.jump-to-book-list,
+.jump-to-chapter-grid {
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.jump-to-book,
+.jump-to-chapter {
+  font: inherit;
+  background: none;
+  border: none;
+  color: var(--ink);
+  text-align: left;
+  padding: 10px 12px;
+  width: 100%;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.jump-to-book:hover,
+.jump-to-chapter:hover {
+  background: var(--accent-soft);
+}
+
+.jump-to-chapter-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.jump-to-chapter {
+  text-align: center;
+}
+
+.jump-to-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.jump-to-back {
+  font: inherit;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ---------- Notes panel ---------- */
+
+.notes-panel {
+  width: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease;
+}
+
+.notes-panel.open {
+  width: 340px;
+}
+
+@media (max-width: 860px) {
+  .notes-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    z-index: 50;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.15);
+  }
+  .notes-panel.open {
+    width: min(320px, 88vw);
+  }
+}
+
+.notes-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.notes-panel-close {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.dot-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.notes-loading,
+.notes-empty {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.note-item {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.note-ref {
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.note-content {
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+}
+
+.note-delete {
+  background: none;
+  border: none;
+  color: var(--divider-red);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 6px 0 0;
+}
+
+.note-composer {
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-composer textarea {
+  font: inherit;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.note-composer button {
+  font: inherit;
+  background: var(--accent);
+  color: var(--surface);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.note-composer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Plan view ---------- */
+
+.plan-view,
+.settings-view {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px 24px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.plan-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.plan-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.plan-progress-fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.plan-day-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plan-day {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+
+.plan-day label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.plan-day-num {
+  font-weight: 600;
+}
+
+.plan-day-date {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.plan-day.completed .plan-day-num,
+.plan-day.completed .plan-day-date {
+  text-decoration: line-through;
+  color: var(--ink-soft);
+}
+
+.plan-day-passages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0 26px;
+}
+
+.plan-passage-link {
+  font: inherit;
+  font-size: 0.85rem;
+  background: var(--accent-soft);
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+/* ---------- Settings view ---------- */
+
+.settings-section {
+  margin-bottom: 28px;
+}
+
+.settings-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
