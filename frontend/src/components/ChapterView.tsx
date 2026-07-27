@@ -37,6 +37,8 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
   const [penColor, setPenColor] = useState<string>(PEN_COLORS[0])
   const [verseTops, setVerseTops] = useState<Map<number, number>>(new Map())
   const [marginSize, setMarginSize] = useState({ width: 190, height: 200 })
+  const [composeVerse, setComposeVerse] = useState<number | null>(null)
+  const [composeDraft, setComposeDraft] = useState('')
 
   const containerRef = useRef<HTMLDivElement>(null)
   const textColumnRef = useRef<HTMLDivElement>(null)
@@ -107,10 +109,23 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     return notes.find((n) => n.type === 'highlight' && n.verseStart <= verse && verse <= n.verseEnd)
   }
 
-  // Positions every drawing/text note near its verse, pushing later items down
-  // just enough to avoid overlapping an earlier one.
+  // Positions every drawing/text note (plus the in-progress compose box, if any)
+  // near its verse, pushing later items down just enough to avoid overlapping.
   const positionedItems = useMemo(() => {
     const items = notes.filter((n) => n.type === 'text' || n.type === 'drawing')
+    if (composeVerse != null) {
+      items.push({
+        id: '__compose__',
+        book,
+        chapter,
+        verseStart: composeVerse,
+        verseEnd: composeVerse,
+        type: 'text',
+        content: '',
+        createdAt: '~',
+        updatedAt: '~',
+      })
+    }
     const sorted = [...items].sort((a, b) => a.verseStart - b.verseStart || a.createdAt.localeCompare(b.createdAt))
     let cursor = -Infinity
     return sorted.map((note) => {
@@ -120,7 +135,7 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
       cursor = top + SLOT_HEIGHT + SLOT_GAP
       return { note, top }
     })
-  }, [notes, verseTops])
+  }, [notes, verseTops, composeVerse, book, chapter])
 
   const canvasDrawings = useMemo(
     () =>
@@ -176,6 +191,37 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
       })
       setNotes((prev) => [...prev, created])
     }
+  }
+
+  function handleMarginTap(point: { x: number; y: number }) {
+    const verse = nearestVerseFor(point.y)
+    if (verse == null) return
+    const existingText = notes.find((n) => n.type === 'text' && n.verseStart === verse)
+    if (existingText) {
+      setComposeVerse(null)
+      startEditText(existingText)
+    } else {
+      setEditingNoteId(null)
+      setComposeDraft('')
+      setComposeVerse(verse)
+    }
+  }
+
+  async function saveCompose() {
+    if (composeVerse == null) return
+    const verse = composeVerse
+    const text = composeDraft.trim()
+    setComposeVerse(null)
+    if (!text) return
+    const created = await api.saveNote({
+      book,
+      chapter,
+      verseStart: verse,
+      verseEnd: verse,
+      type: 'text',
+      content: text,
+    })
+    setNotes((prev) => [...prev, created])
   }
 
   async function moveItemVerse(note: Note, direction: 1 | -1) {
@@ -339,41 +385,69 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
             drawings={canvasDrawings}
             color={penColor}
             onStrokeComplete={handleStrokeComplete}
+            onTap={handleMarginTap}
           />
 
-          {positionedItems.map(({ note, top }) => (
-            <div key={note.id} className={`margin-item ${note.type === 'drawing' ? 'margin-item-drawing' : ''}`} style={{ top }}>
-              <div className="margin-item-tag">
-                <button onClick={() => moveItemVerse(note, -1)} aria-label="Attach to previous verse">
-                  ▲
-                </button>
-                <span>v{note.verseStart}</span>
-                <button onClick={() => moveItemVerse(note, 1)} aria-label="Attach to next verse">
-                  ▼
-                </button>
-                <button className="margin-item-delete" onClick={() => deleteMarginItem(note)} aria-label="Delete">
-                  ×
-                </button>
-              </div>
-
-              {note.type === 'text' &&
-                (editingNoteId === note.id ? (
+          {positionedItems.map(({ note, top }) => {
+            if (note.id === '__compose__') {
+              return (
+                <div key="compose" className="margin-item" style={{ top }}>
+                  <div className="margin-item-tag">
+                    <span>v{note.verseStart}</span>
+                  </div>
                   <div className="margin-item-edit">
                     <textarea
                       autoFocus
                       className="margin-note-input"
-                      value={editingDraft}
-                      onChange={(e) => setEditingDraft(e.target.value)}
+                      placeholder="Type a note…"
+                      value={composeDraft}
+                      onChange={(e) => setComposeDraft(e.target.value)}
                     />
-                    <button onClick={() => saveTextEdit(note)}>Save</button>
+                    <div className="margin-item-edit-actions">
+                      <button onClick={saveCompose}>Save</button>
+                      <button className="margin-item-edit-cancel" onClick={() => setComposeVerse(null)}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                ) : (
-                  <div className="margin-note-text" onClick={() => startEditText(note)}>
-                    {note.content}
-                  </div>
-                ))}
-            </div>
-          ))}
+                </div>
+              )
+            }
+
+            return (
+              <div key={note.id} className={`margin-item ${note.type === 'drawing' ? 'margin-item-drawing' : ''}`} style={{ top }}>
+                <div className="margin-item-tag">
+                  <button onClick={() => moveItemVerse(note, -1)} aria-label="Attach to previous verse">
+                    ▲
+                  </button>
+                  <span>v{note.verseStart}</span>
+                  <button onClick={() => moveItemVerse(note, 1)} aria-label="Attach to next verse">
+                    ▼
+                  </button>
+                  <button className="margin-item-delete" onClick={() => deleteMarginItem(note)} aria-label="Delete">
+                    ×
+                  </button>
+                </div>
+
+                {note.type === 'text' &&
+                  (editingNoteId === note.id ? (
+                    <div className="margin-item-edit">
+                      <textarea
+                        autoFocus
+                        className="margin-note-input"
+                        value={editingDraft}
+                        onChange={(e) => setEditingDraft(e.target.value)}
+                      />
+                      <button onClick={() => saveTextEdit(note)}>Save</button>
+                    </div>
+                  ) : (
+                    <div className="margin-note-text" onClick={() => startEditText(note)}>
+                      {note.content}
+                    </div>
+                  ))}
+              </div>
+            )
+          })}
         </div>
 
         {popover && (

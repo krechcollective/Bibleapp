@@ -10,6 +10,8 @@ interface PositionedDrawing {
   strokes: Stroke[]
 }
 
+const TAP_MOVEMENT_THRESHOLD = 6
+
 interface MarginCanvasProps {
   width: number
   height: number
@@ -17,6 +19,8 @@ interface MarginCanvasProps {
   color: string
   /** Fires once a stroke ends, with points in margin-local coordinates (y = 0 at the margin's top). */
   onStrokeComplete: (points: StrokePoint[]) => void
+  /** Fires for a tap/click with no real movement — the "I want to type a note here" gesture. */
+  onTap: (point: { x: number; y: number }) => void
 }
 
 function renderStrokeLines(points: StrokePoint[], color: string, keyPrefix: string | number) {
@@ -40,7 +44,7 @@ function renderStrokeLines(points: StrokePoint[], color: string, keyPrefix: stri
   return <g key={keyPrefix}>{segments}</g>
 }
 
-export function MarginCanvas({ width, height, drawings, color, onStrokeComplete }: MarginCanvasProps) {
+export function MarginCanvas({ width, height, drawings, color, onStrokeComplete, onTap }: MarginCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const currentStroke = useRef<StrokePoint[] | null>(null)
   // Forces a re-render mid-stroke; the in-progress stroke itself lives in a ref.
@@ -77,7 +81,18 @@ export function MarginCanvas({ width, height, drawings, color, onStrokeComplete 
   function endStroke() {
     const finished = currentStroke.current
     currentStroke.current = null
-    if (finished && finished.length > 1) onStrokeComplete(finished)
+    if (finished) {
+      const start = finished[0]
+      const maxMovement = finished.reduce(
+        (max, p) => Math.max(max, Math.hypot(p.x - start.x, p.y - start.y)),
+        0,
+      )
+      if (maxMovement < TAP_MOVEMENT_THRESHOLD) {
+        onTap({ x: start.x, y: start.y })
+      } else {
+        onStrokeComplete(finished)
+      }
+    }
     setTick((t) => t + 1)
   }
 

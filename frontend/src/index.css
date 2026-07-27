@@ -427,6 +427,17 @@ button {
   cursor: pointer;
 }
 
+.margin-item-edit-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.margin-item-edit-cancel {
+  background: none !important;
+  color: var(--ink-soft) !important;
+}
+
 /* ---------- Verse popover ---------- */
 
 .verse-popover-scrim {
