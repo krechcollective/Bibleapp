@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api, type Note, type Passage } from '../lib/api'
 import { useAppStore } from '../store/appStore'
-import { DrawingPad } from './DrawingPad'
-import { DrawingPreview } from './DrawingPreview'
-import { isEmptyDrawing, parseDrawing, type DrawingData } from '../lib/strokes'
+import { MarginCanvas } from './MarginCanvas'
+import { PEN_COLORS, parseDrawing, type StrokePoint, type DrawingData } from '../lib/strokes'
 
 interface ChapterViewProps {
   book: string
@@ -16,15 +15,14 @@ interface ChapterViewProps {
 const HIGHLIGHT_COLORS = ['yellow', 'green', 'blue', 'pink'] as const
 type HighlightColor = (typeof HIGHLIGHT_COLORS)[number]
 
-const POPOVER_DRAWING_SIZE = { width: 240, height: 150 }
-const MARGIN_DRAWING_SIZE = { width: 200, height: 130 }
-
-type PopoverMode = 'menu' | 'note' | 'drawing'
+/** Nominal vertical slot each margin item (drawing or note) reserves, before collision-avoidance shifts it. */
+const SLOT_HEIGHT = 92
+const SLOT_GAP = 8
 
 interface PopoverState {
   verse: number
   top: number
-  mode: PopoverMode
+  mode: 'menu' | 'note'
   draft: string
 }
 
@@ -36,7 +34,13 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
   const [popover, setPopover] = useState<PopoverState | null>(null)
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [editingDraft, setEditingDraft] = useState('')
+  const [penColor, setPenColor] = useState<string>(PEN_COLORS[0])
+  const [verseTops, setVerseTops] = useState<Map<number, number>>(new Map())
+  const [marginSize, setMarginSize] = useState({ width: 190, height: 200 })
+
   const containerRef = useRef<HTMLDivElement>(null)
+  const textColumnRef = useRef<HTMLDivElement>(null)
+  const marginRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -70,12 +74,138 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     }
   }, [book, chapter])
 
+  // Track where each verse actually renders (it can move: text loads late, wraps
+  // differently at different widths) so drawings/notes can auto-attach to it.
+  useLayoutEffect(() => {
+    const textEl = textColumnRef.current
+    const marginEl = marginRef.current
+    const gridEl = containerRef.current
+    if (!textEl || !gridEl) return
+
+    function measureVerseTops() {
+      const gridRect = gridEl!.getBoundingClientRect()
+      const map = new Map<number, number>()
+      textEl!.querySelectorAll('[data-verse]').forEach((el) => {
+        const verse = Number((el as HTMLElement).dataset.verse)
+        const r = (el as HTMLElement).getBoundingClientRect()
+        map.set(verse, r.top - gridRect.top + r.height / 2)
+      })
+      setVerseTops(map)
+    }
+
+    measureVerseTops()
+    const ro = new ResizeObserver(() => {
+      measureVerseTops()
+      if (marginEl) setMarginSize({ width: marginEl.clientWidth, height: marginEl.clientHeight })
+    })
+    ro.observe(textEl)
+    if (marginEl) ro.observe(marginEl)
+    return () => ro.disconnect()
+  }, [passage])
+
   function highlightFor(verse: number): Note | undefined {
     return notes.find((n) => n.type === 'highlight' && n.verseStart <= verse && verse <= n.verseEnd)
   }
 
-  function marginNotesFor(): Note[] {
-    return notes.filter((n) => n.type === 'text' || n.type === 'drawing').sort((a, b) => a.verseStart - b.verseStart)
+  // Positions every drawing/text note near its verse, pushing later items down
+  // just enough to avoid overlapping an earlier one.
+  const positionedItems = useMemo(() => {
+    const items = notes.filter((n) => n.type === 'text' || n.type === 'drawing')
+    const sorted = [...items].sort((a, b) => a.verseStart - b.verseStart || a.createdAt.localeCompare(b.createdAt))
+    let cursor = -Infinity
+    return sorted.map((note) => {
+      const verseY = verseTops.get(note.verseStart) ?? 0
+      const desired = verseY - SLOT_HEIGHT / 2
+      const top = Math.max(desired, cursor)
+      cursor = top + SLOT_HEIGHT + SLOT_GAP
+      return { note, top }
+    })
+  }, [notes, verseTops])
+
+  const canvasDrawings = useMemo(
+    () =>
+      positionedItems
+        .filter((p) => p.note.type === 'drawing')
+        .map((p) => {
+          const data = parseDrawing(p.note.content)
+          return { id: p.note.id, top: p.top, strokes: data?.strokes ?? [] }
+        }),
+    [positionedItems],
+  )
+
+  function nearestVerseFor(y: number): number | null {
+    let best: number | null = null
+    let bestDist = Infinity
+    for (const [verse, top] of verseTops) {
+      const dist = Math.abs(top - y)
+      if (dist < bestDist) {
+        bestDist = dist
+        best = verse
+      }
+    }
+    return best
+  }
+
+  async function handleStrokeComplete(points: StrokePoint[]) {
+    const mid = points[Math.floor(points.length / 2)]
+    const verse = nearestVerseFor(mid.y)
+    if (verse == null) return
+
+    const slotTop = (verseTops.get(verse) ?? 0) - SLOT_HEIGHT / 2
+    const localPoints = points.map((p) => ({ ...p, y: p.y - slotTop }))
+    const existing = notes.find((n) => n.type === 'drawing' && n.verseStart === verse)
+    const existingData = existing ? parseDrawing(existing.content) : null
+    const data: DrawingData = {
+      width: marginSize.width,
+      height: SLOT_HEIGHT,
+      strokes: [...(existingData?.strokes ?? []), { color: penColor, points: localPoints }],
+    }
+    const content = JSON.stringify(data)
+
+    if (existing) {
+      const updated = await api.saveNote({ ...existing, content })
+      setNotes((prev) => prev.map((n) => (n.id === existing.id ? updated : n)))
+    } else {
+      const created = await api.saveNote({
+        book,
+        chapter,
+        verseStart: verse,
+        verseEnd: verse,
+        type: 'drawing',
+        content,
+      })
+      setNotes((prev) => [...prev, created])
+    }
+  }
+
+  async function moveItemVerse(note: Note, direction: 1 | -1) {
+    const maxVerse = passage?.verses.length ?? note.verseStart
+    const newVerse = Math.min(maxVerse, Math.max(1, note.verseStart + direction))
+    if (newVerse === note.verseStart) return
+    const updated = await api.saveNote({ ...note, verseStart: newVerse, verseEnd: newVerse })
+    setNotes((prev) => prev.map((n) => (n.id === note.id ? updated : n)))
+  }
+
+  async function deleteMarginItem(note: Note) {
+    await api.deleteNote(note.id)
+    setNotes((prev) => prev.filter((n) => n.id !== note.id))
+    setEditingNoteId(null)
+  }
+
+  function startEditText(note: Note) {
+    setEditingNoteId(note.id)
+    setEditingDraft(note.content)
+  }
+
+  async function saveTextEdit(note: Note) {
+    const text = editingDraft.trim()
+    if (!text) {
+      await deleteMarginItem(note)
+      return
+    }
+    const updated = await api.saveNote({ ...note, content: text })
+    setNotes((prev) => prev.map((n) => (n.id === note.id ? updated : n)))
+    setEditingNoteId(null)
   }
 
   function onVerseClick(e: React.MouseEvent<HTMLSpanElement>, verse: number) {
@@ -121,20 +251,12 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     setPopover({ ...popover, mode: 'note', draft: existing?.content ?? '' })
   }
 
-  function openDrawingEditor() {
-    if (!popover) return
-    setPopover({ ...popover, mode: 'drawing' })
-  }
-
   async function saveNoteDraft() {
     if (!popover) return
     const existing = notes.find((n) => n.type === 'text' && n.verseStart === popover.verse)
     const text = popover.draft.trim()
     if (!text) {
-      if (existing) {
-        await api.deleteNote(existing.id)
-        setNotes((prev) => prev.filter((n) => n.id !== existing.id))
-      }
+      if (existing) await deleteMarginItem(existing)
       setPopover(null)
       return
     }
@@ -155,58 +277,7 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     setPopover(null)
   }
 
-  async function saveDrawing(verse: number, data: DrawingData, existing: Note | undefined) {
-    if (isEmptyDrawing(data)) {
-      if (existing) {
-        await api.deleteNote(existing.id)
-        setNotes((prev) => prev.filter((n) => n.id !== existing.id))
-      }
-      return
-    }
-    const content = JSON.stringify(data)
-    if (existing) {
-      const updated = await api.saveNote({ ...existing, content })
-      setNotes((prev) => prev.map((n) => (n.id === existing.id ? updated : n)))
-    } else {
-      const created = await api.saveNote({
-        book,
-        chapter,
-        verseStart: verse,
-        verseEnd: verse,
-        type: 'drawing',
-        content,
-      })
-      setNotes((prev) => [...prev, created])
-    }
-  }
-
-  function startEditMarginNote(note: Note) {
-    setEditingNoteId(note.id)
-    setEditingDraft(note.content)
-  }
-
-  async function saveMarginEdit(note: Note) {
-    const text = editingDraft.trim()
-    if (!text) {
-      await api.deleteNote(note.id)
-      setNotes((prev) => prev.filter((n) => n.id !== note.id))
-    } else {
-      const updated = await api.saveNote({ ...note, content: text })
-      setNotes((prev) => prev.map((n) => (n.id === note.id ? updated : n)))
-    }
-    setEditingNoteId(null)
-  }
-
-  async function deleteMarginNote(note: Note) {
-    await api.deleteNote(note.id)
-    setNotes((prev) => prev.filter((n) => n.id !== note.id))
-    setEditingNoteId(null)
-  }
-
   const popoverHighlight = popover ? highlightFor(popover.verse) : undefined
-  const popoverDrawing = popover
-    ? notes.find((n) => n.type === 'drawing' && n.verseStart === popover.verse)
-    : undefined
 
   return (
     <div className="chapter" data-book={book} data-chapter={chapter}>
@@ -221,7 +292,7 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
       )}
 
       <div className="chapter-grid" ref={containerRef}>
-        <div className="chapter-column">
+        <div className="chapter-column" ref={textColumnRef}>
           <h2 className="chapter-heading">
             {book} {chapter}
           </h2>
@@ -234,6 +305,7 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
                 return (
                   <span
                     key={v.verse}
+                    data-verse={v.verse}
                     className={`verse ${hl ? `verse-hl-${hl.content}` : ''} ${
                       popover?.verse === v.verse ? 'verse-selected' : ''
                     }`}
@@ -248,71 +320,66 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
           )}
         </div>
 
-        <div className="chapter-margin">
-          {marginNotesFor().map((note) => {
-            if (editingNoteId === note.id) {
-              if (note.type === 'drawing') {
-                return (
-                  <div key={note.id} className="margin-note margin-note-editing">
-                    <span className="margin-note-verse">v{note.verseStart}</span>
-                    <DrawingPad
-                      width={MARGIN_DRAWING_SIZE.width}
-                      height={MARGIN_DRAWING_SIZE.height}
-                      initial={parseDrawing(note.content)}
-                      onSave={async (data) => {
-                        await saveDrawing(note.verseStart, data, note)
-                        setEditingNoteId(null)
-                      }}
-                      onCancel={() => setEditingNoteId(null)}
-                    />
-                    <button className="margin-note-delete" onClick={() => deleteMarginNote(note)}>
-                      Delete
-                    </button>
-                  </div>
-                )
-              }
-              return (
-                <div key={note.id} className="margin-note margin-note-editing">
-                  <span className="margin-note-verse">v{note.verseStart}</span>
-                  <textarea
-                    autoFocus
-                    className="margin-note-input"
-                    value={editingDraft}
-                    onChange={(e) => setEditingDraft(e.target.value)}
-                  />
-                  <div className="margin-note-actions">
-                    <button onClick={() => saveMarginEdit(note)}>Save</button>
-                    <button className="margin-note-delete" onClick={() => deleteMarginNote(note)}>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              )
-            }
+        <div className="chapter-margin" ref={marginRef}>
+          <div className="margin-pen-colors">
+            {PEN_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`pen-swatch ${penColor === c ? 'pen-swatch-active' : ''}`}
+                style={{ background: c }}
+                onClick={() => setPenColor(c)}
+                aria-label={`Pen color ${c}`}
+              />
+            ))}
+          </div>
 
-            if (note.type === 'drawing') {
-              const data = parseDrawing(note.content)
-              return (
-                <div key={note.id} className="margin-note margin-drawing" onClick={() => setEditingNoteId(note.id)}>
-                  <span className="margin-note-verse">v{note.verseStart}</span>
-                  {data && <DrawingPreview data={data} />}
-                </div>
-              )
-            }
+          <MarginCanvas
+            width={marginSize.width}
+            height={Math.max(marginSize.height, 60)}
+            drawings={canvasDrawings}
+            color={penColor}
+            onStrokeComplete={handleStrokeComplete}
+          />
 
-            return (
-              <div key={note.id} className="margin-note" onClick={() => startEditMarginNote(note)}>
-                <span className="margin-note-verse">v{note.verseStart}</span>
-                <span className="margin-note-text">{note.content}</span>
+          {positionedItems.map(({ note, top }) => (
+            <div key={note.id} className={`margin-item ${note.type === 'drawing' ? 'margin-item-drawing' : ''}`} style={{ top }}>
+              <div className="margin-item-tag">
+                <button onClick={() => moveItemVerse(note, -1)} aria-label="Attach to previous verse">
+                  ▲
+                </button>
+                <span>v{note.verseStart}</span>
+                <button onClick={() => moveItemVerse(note, 1)} aria-label="Attach to next verse">
+                  ▼
+                </button>
+                <button className="margin-item-delete" onClick={() => deleteMarginItem(note)} aria-label="Delete">
+                  ×
+                </button>
               </div>
-            )
-          })}
+
+              {note.type === 'text' &&
+                (editingNoteId === note.id ? (
+                  <div className="margin-item-edit">
+                    <textarea
+                      autoFocus
+                      className="margin-note-input"
+                      value={editingDraft}
+                      onChange={(e) => setEditingDraft(e.target.value)}
+                    />
+                    <button onClick={() => saveTextEdit(note)}>Save</button>
+                  </div>
+                ) : (
+                  <div className="margin-note-text" onClick={() => startEditText(note)}>
+                    {note.content}
+                  </div>
+                ))}
+            </div>
+          ))}
         </div>
 
         {popover && (
           <>
             <div className="verse-popover-scrim" onClick={() => setPopover(null)} />
-            <div className={`verse-popover ${popover.mode === 'drawing' ? 'verse-popover-wide' : ''}`} style={{ top: popover.top }}>
+            <div className="verse-popover" style={{ top: popover.top }}>
               {popover.mode === 'menu' && (
                 <div className="verse-popover-swatches">
                   {HIGHLIGHT_COLORS.map((c) => (
@@ -325,9 +392,6 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
                   ))}
                   <button className="verse-popover-note-btn" onClick={openNoteEditor}>
                     ✎ Note
-                  </button>
-                  <button className="verse-popover-note-btn" onClick={openDrawingEditor}>
-                    ✏️ Draw
                   </button>
                 </div>
               )}
@@ -347,19 +411,6 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
                     </button>
                   </div>
                 </div>
-              )}
-
-              {popover.mode === 'drawing' && (
-                <DrawingPad
-                  width={POPOVER_DRAWING_SIZE.width}
-                  height={POPOVER_DRAWING_SIZE.height}
-                  initial={popoverDrawing ? parseDrawing(popoverDrawing.content) : null}
-                  onSave={async (data) => {
-                    await saveDrawing(popover.verse, data, popoverDrawing)
-                    setPopover(null)
-                  }}
-                  onCancel={() => setPopover(null)}
-                />
               )}
             </div>
           </>
