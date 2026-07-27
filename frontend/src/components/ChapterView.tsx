@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type Note, type Passage } from '../lib/api'
 import { useAppStore } from '../store/appStore'
+import { DrawingPad } from './DrawingPad'
+import { DrawingPreview } from './DrawingPreview'
+import { isEmptyDrawing, parseDrawing, type DrawingData } from '../lib/strokes'
 
 interface ChapterViewProps {
   book: string
@@ -13,10 +16,15 @@ interface ChapterViewProps {
 const HIGHLIGHT_COLORS = ['yellow', 'green', 'blue', 'pink'] as const
 type HighlightColor = (typeof HIGHLIGHT_COLORS)[number]
 
+const POPOVER_DRAWING_SIZE = { width: 240, height: 150 }
+const MARGIN_DRAWING_SIZE = { width: 200, height: 130 }
+
+type PopoverMode = 'menu' | 'note' | 'drawing'
+
 interface PopoverState {
   verse: number
   top: number
-  editingText: boolean
+  mode: PopoverMode
   draft: string
 }
 
@@ -66,8 +74,8 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     return notes.find((n) => n.type === 'highlight' && n.verseStart <= verse && verse <= n.verseEnd)
   }
 
-  function textNotesFor(): Note[] {
-    return notes.filter((n) => n.type === 'text').sort((a, b) => a.verseStart - b.verseStart)
+  function marginNotesFor(): Note[] {
+    return notes.filter((n) => n.type === 'text' || n.type === 'drawing').sort((a, b) => a.verseStart - b.verseStart)
   }
 
   function onVerseClick(e: React.MouseEvent<HTMLSpanElement>, verse: number) {
@@ -80,7 +88,7 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     setPopover({
       verse,
       top: container ? rect.bottom - container.top + 4 : 0,
-      editingText: false,
+      mode: 'menu',
       draft: '',
     })
   }
@@ -110,7 +118,12 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
   function openNoteEditor() {
     if (!popover) return
     const existing = notes.find((n) => n.type === 'text' && n.verseStart === popover.verse)
-    setPopover({ ...popover, editingText: true, draft: existing?.content ?? '' })
+    setPopover({ ...popover, mode: 'note', draft: existing?.content ?? '' })
+  }
+
+  function openDrawingEditor() {
+    if (!popover) return
+    setPopover({ ...popover, mode: 'drawing' })
   }
 
   async function saveNoteDraft() {
@@ -142,6 +155,31 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     setPopover(null)
   }
 
+  async function saveDrawing(verse: number, data: DrawingData, existing: Note | undefined) {
+    if (isEmptyDrawing(data)) {
+      if (existing) {
+        await api.deleteNote(existing.id)
+        setNotes((prev) => prev.filter((n) => n.id !== existing.id))
+      }
+      return
+    }
+    const content = JSON.stringify(data)
+    if (existing) {
+      const updated = await api.saveNote({ ...existing, content })
+      setNotes((prev) => prev.map((n) => (n.id === existing.id ? updated : n)))
+    } else {
+      const created = await api.saveNote({
+        book,
+        chapter,
+        verseStart: verse,
+        verseEnd: verse,
+        type: 'drawing',
+        content,
+      })
+      setNotes((prev) => [...prev, created])
+    }
+  }
+
   function startEditMarginNote(note: Note) {
     setEditingNoteId(note.id)
     setEditingDraft(note.content)
@@ -164,6 +202,11 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
     setNotes((prev) => prev.filter((n) => n.id !== note.id))
     setEditingNoteId(null)
   }
+
+  const popoverHighlight = popover ? highlightFor(popover.verse) : undefined
+  const popoverDrawing = popover
+    ? notes.find((n) => n.type === 'drawing' && n.verseStart === popover.verse)
+    : undefined
 
   return (
     <div className="chapter" data-book={book} data-chapter={chapter}>
@@ -206,53 +249,90 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
         </div>
 
         <div className="chapter-margin">
-          {textNotesFor().map((note) =>
-            editingNoteId === note.id ? (
-              <div key={note.id} className="margin-note margin-note-editing">
-                <span className="margin-note-verse">v{note.verseStart}</span>
-                <textarea
-                  autoFocus
-                  className="margin-note-input"
-                  value={editingDraft}
-                  onChange={(e) => setEditingDraft(e.target.value)}
-                />
-                <div className="margin-note-actions">
-                  <button onClick={() => saveMarginEdit(note)}>Save</button>
-                  <button className="margin-note-delete" onClick={() => deleteMarginNote(note)}>
-                    Delete
-                  </button>
+          {marginNotesFor().map((note) => {
+            if (editingNoteId === note.id) {
+              if (note.type === 'drawing') {
+                return (
+                  <div key={note.id} className="margin-note margin-note-editing">
+                    <span className="margin-note-verse">v{note.verseStart}</span>
+                    <DrawingPad
+                      width={MARGIN_DRAWING_SIZE.width}
+                      height={MARGIN_DRAWING_SIZE.height}
+                      initial={parseDrawing(note.content)}
+                      onSave={async (data) => {
+                        await saveDrawing(note.verseStart, data, note)
+                        setEditingNoteId(null)
+                      }}
+                      onCancel={() => setEditingNoteId(null)}
+                    />
+                    <button className="margin-note-delete" onClick={() => deleteMarginNote(note)}>
+                      Delete
+                    </button>
+                  </div>
+                )
+              }
+              return (
+                <div key={note.id} className="margin-note margin-note-editing">
+                  <span className="margin-note-verse">v{note.verseStart}</span>
+                  <textarea
+                    autoFocus
+                    className="margin-note-input"
+                    value={editingDraft}
+                    onChange={(e) => setEditingDraft(e.target.value)}
+                  />
+                  <div className="margin-note-actions">
+                    <button onClick={() => saveMarginEdit(note)}>Save</button>
+                    <button className="margin-note-delete" onClick={() => deleteMarginNote(note)}>
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
+              )
+            }
+
+            if (note.type === 'drawing') {
+              const data = parseDrawing(note.content)
+              return (
+                <div key={note.id} className="margin-note margin-drawing" onClick={() => setEditingNoteId(note.id)}>
+                  <span className="margin-note-verse">v{note.verseStart}</span>
+                  {data && <DrawingPreview data={data} />}
+                </div>
+              )
+            }
+
+            return (
               <div key={note.id} className="margin-note" onClick={() => startEditMarginNote(note)}>
                 <span className="margin-note-verse">v{note.verseStart}</span>
                 <span className="margin-note-text">{note.content}</span>
               </div>
-            ),
-          )}
+            )
+          })}
         </div>
 
         {popover && (
           <>
             <div className="verse-popover-scrim" onClick={() => setPopover(null)} />
-            <div className="verse-popover" style={{ top: popover.top }}>
-              {!popover.editingText ? (
-                <>
-                  <div className="verse-popover-swatches">
-                    {HIGHLIGHT_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        className={`swatch swatch-${c} ${highlightFor(popover.verse)?.content === c ? 'swatch-active' : ''}`}
-                        onClick={() => toggleHighlight(c)}
-                        aria-label={`Highlight ${c}`}
-                      />
-                    ))}
-                    <button className="verse-popover-note-btn" onClick={openNoteEditor}>
-                      ✎ Note
-                    </button>
-                  </div>
-                </>
-              ) : (
+            <div className={`verse-popover ${popover.mode === 'drawing' ? 'verse-popover-wide' : ''}`} style={{ top: popover.top }}>
+              {popover.mode === 'menu' && (
+                <div className="verse-popover-swatches">
+                  {HIGHLIGHT_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      className={`swatch swatch-${c} ${popoverHighlight?.content === c ? 'swatch-active' : ''}`}
+                      onClick={() => toggleHighlight(c)}
+                      aria-label={`Highlight ${c}`}
+                    />
+                  ))}
+                  <button className="verse-popover-note-btn" onClick={openNoteEditor}>
+                    ✎ Note
+                  </button>
+                  <button className="verse-popover-note-btn" onClick={openDrawingEditor}>
+                    ✏️ Draw
+                  </button>
+                </div>
+              )}
+
+              {popover.mode === 'note' && (
                 <div className="verse-popover-editor">
                   <textarea
                     autoFocus
@@ -267,6 +347,19 @@ export function ChapterView({ book, chapter, dayDivider, onDayComplete }: Chapte
                     </button>
                   </div>
                 </div>
+              )}
+
+              {popover.mode === 'drawing' && (
+                <DrawingPad
+                  width={POPOVER_DRAWING_SIZE.width}
+                  height={POPOVER_DRAWING_SIZE.height}
+                  initial={popoverDrawing ? parseDrawing(popoverDrawing.content) : null}
+                  onSave={async (data) => {
+                    await saveDrawing(popover.verse, data, popoverDrawing)
+                    setPopover(null)
+                  }}
+                  onCancel={() => setPopover(null)}
+                />
               )}
             </div>
           </>
