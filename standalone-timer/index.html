@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Interval Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap">
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --ink: #17171a;
+    --ink-soft: #6b6a6f;
+    --ink-faint: #a8a7ad;
+    --border: #e5e3dd;
+    --accent: #d6ff3f;
+    --accent-ink: #17171a;
+    --work: #4fd86a;
+    --rest: #ff5a52;
+    --prepare: #f2e94e;
+    --round-stat: #2f7dd6;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0d0f;
+      --surface: #18181b;
+      --ink: #f4f4f4;
+      --ink-soft: #9a9a9f;
+      --ink-faint: #626268;
+      --border: #2a2a2e;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d0d0f;
+    --surface: #18181b;
+    --ink: #f4f4f4;
+    --ink-soft: #9a9a9f;
+    --ink-faint: #626268;
+    --border: #2a2a2e;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .screen {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  [hidden] { display: none !important; }
+
+  /* ---------- Home / list ---------- */
+
+  .home-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(32px + env(safe-area-inset-bottom, 0px));
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .home-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .home-header h1 {
+    font-family: 'Archivo Black', 'Inter', sans-serif;
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .new-btn {
+    flex-shrink: 0;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 800;
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+    padding: 12px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .new-btn:hover { filter: brightness(1.05); }
+
+  .empty-state {
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+  }
+
+  .workout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .workout-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 16px;
+  }
+
+  .workout-card-main {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .workout-card-name {
+    font-weight: 800;
+    font-size: 1.08rem;
+  }
+
+  .workout-card-meta {
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--border); color: var(--ink); }
+
+  /* ---------- Editor ---------- */
+
+  .editor-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(32px + env(safe-area-inset-bottom, 0px));
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .editor-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .editor-topbar h2 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 1.3rem;
+    margin: 0;
+  }
+
+  .back-link {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 4px 8px 4px 0;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .field span.field-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+
+  .field input, .field select {
+    font: inherit;
+    font-size: 1rem;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+    width: 100%;
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--round-stat); outline-offset: -1px; }
+
+  .field-row { display: flex; gap: 14px; }
+  .field-row .field { flex: 1; }
+
+  .section-label {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 1rem;
+    margin: 24px 0 10px;
+  }
+
+  .exercise-row {
+    display: grid;
+    grid-template-columns: 20px 1fr 62px 62px 36px;
+    gap: 8px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .exercise-row .idx { color: var(--ink-faint); font-weight: 700; font-size: 0.85rem; text-align: center; }
+
+  .exercise-row input {
+    font: inherit;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--ink);
+    width: 100%;
+    min-width: 0;
+    font-size: 0.9rem;
+  }
+
+  .exercise-row input.name-input { font-weight: 600; }
+  .exercise-row input.time-input { text-align: center; font-variant-numeric: tabular-nums; }
+
+  .exercise-row .remove-btn {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 6px;
+  }
+  .exercise-row .remove-btn:hover { color: var(--rest); }
+
+  .col-labels {
+    display: grid;
+    grid-template-columns: 20px 1fr 62px 62px 36px;
+    gap: 8px;
+    font-size: 0.65rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 10px;
+    margin-bottom: 6px;
+  }
+  .col-labels span:nth-child(3), .col-labels span:nth-child(4) { text-align: center; }
+
+  .add-exercise-btn {
+    width: 100%;
+    border: 1px dashed var(--border);
+    background: none;
+    color: var(--ink-soft);
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .add-exercise-btn:hover { border-color: var(--round-stat); color: var(--round-stat); }
+
+  .editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .total-time {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .save-btn {
+    border: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 800;
+    padding: 12px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ---------- Player ---------- */
+
+  .player {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #0b0b0c;
+    color: #f5f5f5;
+  }
+
+  .player-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;
+    flex-shrink: 0;
+  }
+
+  .player-topbar .icon-btn {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+  }
+  .player-topbar .icon-btn:hover { background: rgba(255,255,255,0.18); }
+
+  .player-title {
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+  }
+
+  .spacer36 { width: 36px; flex-shrink: 0; }
+
+  /* pre-start summary */
+
+  .presummary { display: flex; justify-content: center; gap: 30px; padding: 12px 16px 8px; flex-shrink: 0; }
+  .presummary-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .presummary-value { font-family: 'Archivo Black', sans-serif; font-size: 1.7rem; color: var(--accent); }
+  .presummary-label { font-size: 0.62rem; letter-spacing: 0.08em; color: #9a9a9a; text-transform: uppercase; }
+
+  .preview-list { flex: 1; overflow-y: auto; padding: 8px 20px; max-width: 560px; margin: 0 auto; width: 100%; }
+  .preview-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 4px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .preview-row .idx { color: #666; font-weight: 700; width: 18px; flex-shrink: 0; }
+  .preview-row .name { flex: 1; font-weight: 700; }
+  .preview-row .times { color: #9a9a9a; font-size: 0.78rem; flex-shrink: 0; }
+
+  .start-btn {
+    flex-shrink: 0;
+    margin: 16px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    padding: 18px;
+    border: none;
+    border-radius: 16px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 1.15rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .start-btn:hover { filter: brightness(1.05); }
+
+  /* running phase band */
+
+  .phase-band {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    text-align: center;
+    transition: background 0.25s ease;
+  }
+
+  .phase-band.prepare { background: var(--prepare); color: #17171a; }
+  .phase-band.work { background: var(--work); color: #082b0e; }
+  .phase-band.rest { background: var(--rest); color: #350706; }
+
+  .phase-label {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: clamp(1.3rem, 6vw, 1.7rem);
+    letter-spacing: 0.04em;
+  }
+
+  .phase-clock {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: clamp(4rem, 22vw, 7rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .phase-exercise { font-weight: 800; font-size: clamp(1.1rem, 5vw, 1.4rem); }
+  .phase-next { font-weight: 700; font-size: 0.78rem; letter-spacing: 0.05em; opacity: 0.7; margin-top: 2px; text-transform: uppercase; }
+
+  .player-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+    flex-shrink: 0;
+  }
+
+  .stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 84px; }
+  .stat-value { font-family: 'Archivo Black', sans-serif; font-size: 2rem; }
+  .stat-round { color: var(--round-stat); }
+  .stat-exercise { color: var(--accent); }
+  .stat-label { font-size: 0.62rem; letter-spacing: 0.05em; color: #9a9a9a; text-align: center; text-transform: uppercase; }
+
+  .play-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    background: rgba(255,255,255,0.04);
+    color: var(--accent);
+    font-size: 1.5rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .play-btn:hover { background: rgba(214,255,63,0.12); }
+
+  .finished-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 20px;
+    text-align: center;
+  }
+  .finished-heading {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: clamp(1.6rem, 7vw, 2.2rem);
+    color: var(--accent);
+  }
+
+  .hint-text {
+    color: var(--ink-faint);
+    font-size: 0.72rem;
+    text-align: center;
+    padding: 0 20px 4px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'interval-coach-workouts-v1';
+  var PREPARE_SECONDS = 5;
+  var COUNT_FROM = 5;
+
+  // ---------------- storage ----------------
+
+  function loadWorkouts() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  function saveWorkouts(list) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  function sampleWorkouts() {
+    return [
+      {
+        id: 'wk-sample-1',
+        name: 'Full Body HIIT',
+        rounds: 3,
+        restBetweenSets: 60,
+        exercises: [
+          { id: 'ex-1', name: 'Jump squats', work: 40, rest: 20 },
+          { id: 'ex-2', name: 'Push-ups', work: 30, rest: 15 },
+          { id: 'ex-3', name: 'Mountain climbers', work: 40, rest: 20 },
+          { id: 'ex-4', name: 'Plank hold', work: 45, rest: 15 }
+        ]
+      }
+    ];
+  }
+
+  var state = {
+    workouts: loadWorkouts() || sampleWorkouts(),
+    screen: 'home', // home | editor | player
+    editing: null,  // workout object being edited
+    editingIsNew: false,
+    playing: null   // { workout, segments, index, remaining, running, started, finished }
+  };
+
+  if (!loadWorkouts()) saveWorkouts(state.workouts);
+
+  function uid(prefix) {
+    return prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function fmtClock(totalSeconds) {
+    var s = Math.max(0, totalSeconds | 0);
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return (m < 10 ? '0' + m : m) + ':' + (sec < 10 ? '0' + sec : sec);
+  }
+
+  function totalDuration(w) {
+    return buildSegments(w).reduce(function (sum, s) { return sum + s.seconds; }, 0);
+  }
+
+  // ---------------- speech / ducking ----------------
+
+  var announcer = (function () {
+    var ducked = [];
+    function mediaEls() { return Array.prototype.slice.call(document.querySelectorAll('audio,video')); }
+    function duck() {
+      ducked = mediaEls().filter(function (el) { return !el.paused; });
+      ducked.forEach(function (el) { el.dataset.preDuck = el.volume; el.volume = 0.15; });
+    }
+    function unduck() {
+      ducked.forEach(function (el) {
+        if (el.dataset.preDuck !== undefined) { el.volume = Number(el.dataset.preDuck); delete el.dataset.preDuck; }
+      });
+      ducked = [];
+    }
+    return {
+      speak: function (text) {
+        if (!('speechSynthesis' in window)) return;
+        duck();
+        var u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.05;
+        u.onend = unduck;
+        u.onerror = unduck;
+        window.speechSynthesis.speak(u);
+      },
+      cancel: function () {
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        unduck();
+      }
+    };
+  })();
+
+  // ---------------- segment engine ----------------
+
+  function buildSegments(workout) {
+    var segments = [];
+    if (!workout.exercises.length) return segments;
+    var totalRounds = workout.rounds;
+    var totalExercises = workout.exercises.length;
+
+    segments.push({
+      phase: 'prepare', label: 'Get ready', seconds: PREPARE_SECONDS,
+      announce: 'Get ready', round: 1, totalRounds: totalRounds, exerciseNumber: 1, totalExercises: totalExercises
+    });
+
+    for (var round = 0; round < workout.rounds; round++) {
+      workout.exercises.forEach(function (exercise, exerciseIndex) {
+        segments.push({
+          phase: 'work', label: exercise.name, seconds: exercise.work,
+          announce: 'Begin, ' + exercise.name,
+          round: round + 1, totalRounds: totalRounds, exerciseNumber: exerciseIndex + 1, totalExercises: totalExercises
+        });
+
+        var isLastExercise = exerciseIndex === workout.exercises.length - 1;
+        var isLastRound = round === workout.rounds - 1;
+
+        if (exercise.rest > 0 && !(isLastExercise && isLastRound)) {
+          var nextExercise = workout.exercises[exerciseIndex + 1];
+          segments.push({
+            phase: 'rest', label: 'Rest', seconds: exercise.rest,
+            announce: nextExercise ? ('Rest. Next up, ' + nextExercise.name) : 'Rest',
+            round: round + 1, totalRounds: totalRounds, exerciseNumber: exerciseIndex + 1, totalExercises: totalExercises
+          });
+        }
+      });
+
+      var isLastRoundOuter = round === workout.rounds - 1;
+      if (!isLastRoundOuter && workout.restBetweenSets > 0) {
+        segments.push({
+          phase: 'rest', label: 'Rest between sets', seconds: workout.restBetweenSets,
+          announce: 'Set complete. Rest',
+          round: round + 1, totalRounds: totalRounds, exerciseNumber: totalExercises, totalExercises: totalExercises
+        });
+      }
+    }
+    return segments;
+  }
+
+  // ---------------- rendering ----------------
+
+  var app = document.getElementById('app');
+  var tickTimer = null;
+
+  function render() {
+    if (state.screen === 'home') renderHome();
+    else if (state.screen === 'editor') renderEditor();
+    else if (state.screen === 'player') renderPlayer();
+  }
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    attrs = attrs || {};
+    Object.keys(attrs).forEach(function (k) {
+      if (k === 'class') node.className = attrs[k];
+      else if (k === 'html') node.innerHTML = attrs[k];
+      else if (k.indexOf('on') === 0) node.addEventListener(k.slice(2), attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) {
+      if (c == null) return;
+      node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
+  // ---------- Home ----------
+
+  function renderHome() {
+    app.innerHTML = '';
+    var screen = el('div', { class: 'screen' });
+    var scroll = el('div', { class: 'home-scroll' });
+
+    scroll.appendChild(el('div', { class: 'home-header' }, [
+      el('h1', {}, ['Interval Coach']),
+      el('button', { class: 'new-btn', onclick: startNewWorkout }, ['+ New workout'])
+    ]));
+
+    if (state.workouts.length === 0) {
+      scroll.appendChild(el('div', { class: 'empty-state' }, [
+        'No workouts yet. Build one with your own exercises — each gets its own work and rest time.'
+      ]));
+    } else {
+      var list = el('div', { class: 'workout-list' });
+      state.workouts.forEach(function (w) {
+        var main = el('div', { class: 'workout-card-main', onclick: function () { openPlayer(w); } }, [
+          el('div', { class: 'workout-card-name' }, [w.name]),
+          el('div', { class: 'workout-card-meta' }, [
+            w.exercises.length + ' exercise' + (w.exercises.length === 1 ? '' : 's') + ' · ' +
+            w.rounds + ' round' + (w.rounds === 1 ? '' : 's') + ' · ' + fmtClock(totalDuration(w))
+          ])
+        ]);
+        var actions = el('div', { class: 'card-actions' }, [
+          el('button', { class: 'icon-btn', title: 'Edit', onclick: function () { startEditWorkout(w); } }, ['✎']),
+          el('button', { class: 'icon-btn', title: 'Delete', onclick: function () { deleteWorkout(w.id); } }, ['✕'])
+        ]);
+        list.appendChild(el('div', { class: 'workout-card' }, [main, actions]));
+      });
+      scroll.appendChild(list);
+    }
+
+    screen.appendChild(scroll);
+    app.appendChild(screen);
+  }
+
+  function deleteWorkout(id) {
+    if (!confirm('Delete this workout?')) return;
+    state.workouts = state.workouts.filter(function (w) { return w.id !== id; });
+    saveWorkouts(state.workouts);
+    render();
+  }
+
+  // ---------- Editor ----------
+
+  function emptyExercise() { return { id: uid('ex'), name: '', work: 30, rest: 15 }; }
+  function emptyWorkout() {
+    return { id: uid('wk'), name: '', rounds: 1, restBetweenSets: 60, exercises: [emptyExercise()] };
+  }
+
+  function startNewWorkout() {
+    state.editing = emptyWorkout();
+    state.editingIsNew = true;
+    state.screen = 'editor';
+    render();
+  }
+
+  function startEditWorkout(w) {
+    state.editing = JSON.parse(JSON.stringify(w));
+    state.editingIsNew = false;
+    state.screen = 'editor';
+    render();
+  }
+
+  function renderEditor() {
+    app.innerHTML = '';
+    var w = state.editing;
+    var screen = el('div', { class: 'screen' });
+    var scroll = el('div', { class: 'editor-scroll' });
+
+    scroll.appendChild(el('div', { class: 'editor-topbar' }, [
+      el('button', { class: 'back-link', onclick: function () { state.screen = 'home'; render(); } }, ['←']),
+      el('h2', {}, [state.editingIsNew ? 'New workout' : 'Edit workout'])
+    ]));
+
+    var nameField = el('div', { class: 'field' }, [
+      el('span', { class: 'field-label' }, ['Workout name'])
+    ]);
+    var nameInput = el('input', { placeholder: 'Leg day', value: w.name });
+    nameInput.addEventListener('input', function (e) { w.name = e.target.value; updateSaveState(); });
+    nameField.appendChild(nameInput);
+    scroll.appendChild(nameField);
+
+    var row = el('div', { class: 'field-row' });
+
+    var roundsField = el('div', { class: 'field' }, [el('span', { class: 'field-label' }, ['Rounds (sets)'])]);
+    var roundsInput = el('input', { type: 'number', min: '1', value: String(w.rounds) });
+    roundsInput.addEventListener('input', function (e) {
+      w.rounds = Math.max(1, parseInt(e.target.value, 10) || 1);
+      updateTotal();
+    });
+    roundsField.appendChild(roundsInput);
+
+    var restField = el('div', { class: 'field' }, [el('span', { class: 'field-label' }, ['Rest between sets (sec)'])]);
+    var restInput = el('input', { type: 'number', min: '0', value: String(w.restBetweenSets) });
+    restInput.addEventListener('input', function (e) {
+      w.restBetweenSets = Math.max(0, parseInt(e.target.value, 10) || 0);
+      updateTotal();
+    });
+    restField.appendChild(restInput);
+
+    row.appendChild(roundsField);
+    row.appendChild(restField);
+    scroll.appendChild(row);
+
+    scroll.appendChild(el('div', { class: 'section-label' }, ['Exercises']));
+
+    scroll.appendChild(el('div', { class: 'col-labels' }, [
+      el('span', {}, ['']), el('span', {}, ['Name']), el('span', {}, ['Work']), el('span', {}, ['Rest']), el('span', {}, [''])
+    ]));
+
+    var exerciseList = el('div', { id: 'exercise-list' });
+    renderExerciseRows(exerciseList, w);
+    scroll.appendChild(exerciseList);
+
+    scroll.appendChild(el('button', {
+      class: 'add-exercise-btn',
+      onclick: function () {
+        w.exercises.push(emptyExercise());
+        renderExerciseRows(exerciseList, w);
+        updateTotal();
+        updateSaveState();
+      }
+    }, ['+ Add exercise']));
+
+    var footer = el('div', { class: 'editor-footer' });
+    var totalSpan = el('span', { class: 'total-time', id: 'total-time' }, ['Total time: ' + fmtClock(totalDuration(w))]);
+    var saveBtn = el('button', {
+      class: 'save-btn', id: 'save-btn',
+      onclick: function () {
+        if (state.editingIsNew) state.workouts.push(w);
+        else state.workouts = state.workouts.map(function (existing) { return existing.id === w.id ? w : existing; });
+        saveWorkouts(state.workouts);
+        state.screen = 'home';
+        render();
+      }
+    }, ['Save workout']);
+    footer.appendChild(totalSpan);
+    footer.appendChild(saveBtn);
+    scroll.appendChild(footer);
+
+    screen.appendChild(scroll);
+    app.appendChild(screen);
+
+    function updateTotal() {
+      document.getElementById('total-time').textContent = 'Total time: ' + fmtClock(totalDuration(w));
+    }
+    function updateSaveState() {
+      var ok = w.name.trim().length > 0 && w.exercises.every(function (ex) { return ex.name.trim().length > 0; });
+      document.getElementById('save-btn').disabled = !ok;
+    }
+    updateSaveState();
+    window.__editorUpdateTotal = updateTotal;
+    window.__editorUpdateSaveState = updateSaveState;
+  }
+
+  function renderExerciseRows(container, w) {
+    container.innerHTML = '';
+    w.exercises.forEach(function (ex, i) {
+      var nameInput = el('input', { class: 'name-input', placeholder: 'Exercise name', value: ex.name });
+      nameInput.addEventListener('input', function (e) { ex.name = e.target.value; window.__editorUpdateSaveState(); });
+
+      var workInput = el('input', { class: 'time-input', type: 'number', min: '1', value: String(ex.work) });
+      workInput.addEventListener('input', function (e) {
+        ex.work = Math.max(1, parseInt(e.target.value, 10) || 1);
+        window.__editorUpdateTotal();
+      });
+
+      var restInput = el('input', { class: 'time-input', type: 'number', min: '0', value: String(ex.rest) });
+      restInput.addEventListener('input', function (e) {
+        ex.rest = Math.max(0, parseInt(e.target.value, 10) || 0);
+        window.__editorUpdateTotal();
+      });
+
+      var removeBtn = el('button', {
+        class: 'remove-btn', title: 'Remove',
+        onclick: function () {
+          if (w.exercises.length === 1) return;
+          w.exercises.splice(i, 1);
+          renderExerciseRows(container, w);
+          window.__editorUpdateTotal();
+          window.__editorUpdateSaveState();
+        }
+      }, ['✕']);
+
+      container.appendChild(el('div', { class: 'exercise-row' }, [
+        el('span', { class: 'idx' }, [String(i + 1)]),
+        nameInput, workInput, restInput, removeBtn
+      ]));
+    });
+  }
+
+  // ---------- Player ----------
+
+  function openPlayer(workout) {
+    var segments = buildSegments(workout);
+    state.playing = {
+      workout: workout,
+      segments: segments,
+      index: 0,
+      remaining: segments.length ? segments[0].seconds : 0,
+      running: false,
+      started: false,
+      finished: false,
+      lastAnnouncedIndex: -1,
+      lastAnnouncedCount: null
+    };
+    state.screen = 'player';
+    render();
+  }
+
+  function stopTicking() {
+    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+  }
+
+  function startTicking() {
+    stopTicking();
+    tickTimer = setInterval(function () {
+      var p = state.playing;
+      if (!p || !p.running) return;
+      p.remaining -= 1;
+      advanceIfNeeded();
+      renderPlayer();
+    }, 1000);
+  }
+
+  function advanceIfNeeded() {
+    var p = state.playing;
+    var seg = p.segments[p.index];
+
+    if (p.lastAnnouncedIndex !== p.index) {
+      p.lastAnnouncedIndex = p.index;
+      p.lastAnnouncedCount = null;
+      if (p.running) announcer.speak(seg.announce);
+    }
+
+    if (p.remaining <= 0) {
+      var next = p.index + 1;
+      if (next >= p.segments.length) {
+        p.finished = true;
+        p.running = false;
+        stopTicking();
+        announcer.speak('Workout complete. Great work.');
+        return;
+      }
+      p.index = next;
+      p.remaining = p.segments[next].seconds;
+      return;
+    }
+
+    if (p.running && p.remaining <= COUNT_FROM && p.remaining > 0 && p.lastAnnouncedCount !== p.remaining) {
+      p.lastAnnouncedCount = p.remaining;
+      announcer.speak(String(p.remaining));
+    }
+  }
+
+  function phaseClass(phase) { return phase === 'work' ? 'work' : (phase === 'rest' ? 'rest' : 'prepare'); }
+  function phaseHeading(phase) { return phase === 'work' ? 'Work' : (phase === 'rest' ? 'Rest' : 'Prepare'); }
+
+  function renderPlayer() {
+    app.innerHTML = '';
+    var p = state.playing;
+    var w = p.workout;
+    var player = el('div', { class: 'player' });
+
+    var closeAction = function () {
+      stopTicking();
+      announcer.cancel();
+      state.screen = 'home';
+      render();
+    };
+
+    player.appendChild(el('div', { class: 'player-topbar' }, [
+      el('button', { class: 'icon-btn', onclick: closeAction, 'aria-label': 'Close' }, ['✕']),
+      el('div', { class: 'player-title' }, [w.name]),
+      el('div', { class: 'spacer36' })
+    ]));
+
+    if (!p.segments.length) {
+      player.appendChild(el('div', { class: 'finished-screen' }, [
+        el('div', {}, ['This workout has no exercises.'])
+      ]));
+      app.appendChild(player);
+      return;
+    }
+
+    if (!p.started) {
+      var summary = el('div', { class: 'presummary' }, [
+        presummaryItem(String(w.exercises.length), 'Exercises'),
+        presummaryItem(String(w.rounds), 'Rounds'),
+        presummaryItem(fmtClock(totalDuration(w)), 'Total time')
+      ]);
+      player.appendChild(summary);
+
+      var previewList = el('div', { class: 'preview-list' });
+      w.exercises.forEach(function (ex, i) {
+        previewList.appendChild(el('div', { class: 'preview-row' }, [
+          el('span', { class: 'idx' }, [String(i + 1)]),
+          el('span', { class: 'name' }, [ex.name]),
+          el('span', { class: 'times' }, [ex.work + 's work / ' + ex.rest + 's rest'])
+        ]));
+      });
+      player.appendChild(previewList);
+
+      player.appendChild(el('button', {
+        class: 'start-btn',
+        onclick: function () {
+          p.started = true;
+          p.running = true;
+          startTicking();
+          renderPlayer();
+        }
+      }, ['START']));
+
+      app.appendChild(player);
+      return;
+    }
+
+    if (p.finished) {
+      player.appendChild(el('div', { class: 'finished-screen' }, [
+        el('div', { class: 'finished-heading' }, ['WORKOUT COMPLETE']),
+        el('button', { class: 'start-btn', style: 'margin:0;', onclick: closeAction }, ['DONE'])
+      ]));
+      app.appendChild(player);
+      return;
+    }
+
+    var seg = p.segments[p.index];
+    var nextSeg = p.segments[p.index + 1];
+
+    var band = el('div', { class: 'phase-band ' + phaseClass(seg.phase) }, [
+      el('div', { class: 'phase-label' }, [phaseHeading(seg.phase).toUpperCase()]),
+      el('div', { class: 'phase-clock' }, [fmtClock(p.remaining)]),
+      seg.phase !== 'prepare' ? el('div', { class: 'phase-exercise' }, [seg.label]) : null,
+      nextSeg ? el('div', { class: 'phase-next' }, [
+        'Up next: ' + (nextSeg.phase === 'work' ? nextSeg.label : phaseHeading(nextSeg.phase))
+      ]) : null
+    ]);
+    player.appendChild(band);
+
+    var stats = el('div', { class: 'player-stats' }, [
+      el('div', { class: 'stat' }, [
+        el('div', { class: 'stat-value stat-round' }, [String(seg.round)]),
+        el('div', { class: 'stat-label' }, ['Round of ' + seg.totalRounds])
+      ]),
+      el('button', {
+        class: 'play-btn', 'aria-label': p.running ? 'Pause' : 'Resume',
+        onclick: function () {
+          p.running = !p.running;
+          if (p.running) { announcer.speak(seg.announce); startTicking(); } else { announcer.cancel(); stopTicking(); }
+          renderPlayer();
+        }
+      }, [p.running ? '❚❚' : '▶']),
+      el('div', { class: 'stat' }, [
+        el('div', { class: 'stat-value stat-exercise' }, [String(seg.exerciseNumber)]),
+        el('div', { class: 'stat-label' }, ['Exercise of ' + seg.totalExercises])
+      ])
+    ]);
+    player.appendChild(stats);
+
+    app.appendChild(player);
+  }
+
+  function presummaryItem(value, label) {
+    return el('div', { class: 'presummary-item' }, [
+      el('div', { class: 'presummary-value' }, [value]),
+      el('div', { class: 'presummary-label' }, [label])
+    ]);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
