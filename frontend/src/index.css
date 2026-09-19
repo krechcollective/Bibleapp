@@ -754,3 +754,315 @@ button {
   align-items: center;
   gap: 8px;
 }
+
+/* ---------- Workout timer ---------- */
+
+.workouts-view {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 20px 60px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.workouts-heading {
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.workouts-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.primary-btn {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.primary-btn:hover {
+  background: var(--accent-strong);
+}
+
+.primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workouts-empty {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+.workout-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workout-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.workout-card-main {
+  cursor: pointer;
+  flex: 1;
+}
+
+.workout-card-title {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+}
+
+.workout-card-meta {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  margin-top: 3px;
+}
+
+.workout-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.workout-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workout-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  flex: 1;
+}
+
+.workout-field input {
+  font: inherit;
+  font-size: 1rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.workout-field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.workout-subheading {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  margin: 4px 0 0;
+}
+
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.exercise-index {
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.exercise-name-input {
+  flex: 1;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--paper);
+  color: var(--ink);
+  min-width: 0;
+}
+
+.exercise-num-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.exercise-num-field input {
+  width: 48px;
+  font: inherit;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.exercise-num-field .unit {
+  color: var(--ink-faint);
+}
+
+.add-exercise-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed var(--border-strong);
+  color: var(--ink-soft);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.add-exercise-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.workout-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+
+.workout-total {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.workout-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.player-view {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 20px 60px;
+  text-align: center;
+}
+
+.player-back {
+  align-self: flex-start;
+}
+
+.player-phase {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 20px;
+  padding: 40px 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.player-phase.phase-work {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.player-phase.phase-rest {
+  background: var(--hl-blue);
+  border-color: var(--border-strong);
+}
+
+.player-phase-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.player-exercise-name {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  margin-top: 8px;
+  min-height: 1.6em;
+}
+
+.player-countdown {
+  font-size: 4.5rem;
+  font-variant-numeric: tabular-nums;
+  margin-top: 12px;
+  line-height: 1;
+}
+
+.player-progress {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.player-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.player-play-btn {
+  min-width: 110px;
+}
+
+.player-hint {
+  max-width: 420px;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+}
+
+.player-finished {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
