@@ -8,6 +8,10 @@ export interface Segment {
   seconds: number
   /** What to announce when this segment begins. */
   announceOnStart: string
+  round: number
+  totalRounds: number
+  exerciseNumber: number
+  totalExercises: number
 }
 
 const PREPARE_SECONDS = 5
@@ -17,11 +21,18 @@ export function buildSegments(workout: Workout): Segment[] {
   const segments: Segment[] = []
   if (workout.exercises.length === 0) return segments
 
+  const totalRounds = workout.rounds
+  const totalExercises = workout.exercises.length
+
   segments.push({
     phase: 'prepare',
     label: 'Get ready',
     seconds: PREPARE_SECONDS,
     announceOnStart: 'Get ready',
+    round: 1,
+    totalRounds,
+    exerciseNumber: 1,
+    totalExercises,
   })
 
   for (let round = 0; round < workout.rounds; round++) {
@@ -31,6 +42,10 @@ export function buildSegments(workout: Workout): Segment[] {
         label: exercise.name,
         seconds: exercise.workSeconds,
         announceOnStart: `Begin, ${exercise.name}`,
+        round: round + 1,
+        totalRounds,
+        exerciseNumber: exerciseIndex + 1,
+        totalExercises,
       })
 
       const isLastExerciseInRound = exerciseIndex === workout.exercises.length - 1
@@ -43,6 +58,10 @@ export function buildSegments(workout: Workout): Segment[] {
           label: 'Rest',
           seconds: exercise.restSeconds,
           announceOnStart: nextExercise ? `Rest. Next up, ${nextExercise.name}` : 'Rest',
+          round: round + 1,
+          totalRounds,
+          exerciseNumber: exerciseIndex + 1,
+          totalExercises,
         })
       }
     })
@@ -54,6 +73,10 @@ export function buildSegments(workout: Workout): Segment[] {
         label: 'Rest between sets',
         seconds: workout.restBetweenSetsSeconds,
         announceOnStart: 'Set complete. Rest',
+        round: round + 1,
+        totalRounds,
+        exerciseNumber: totalExercises,
+        totalExercises,
       })
     }
   }

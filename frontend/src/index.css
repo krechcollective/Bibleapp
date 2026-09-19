@@ -984,85 +984,254 @@ button {
   gap: 8px;
 }
 
-.player-view {
+/* ---------- Tabata player (bold, dark) ---------- */
+
+.tabata-shell {
   height: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  padding: 24px 20px 60px;
-  text-align: center;
+  background: #0d0d0d;
+  color: #f4f4f4;
+  font-family: var(--sans);
 }
 
-.player-back {
-  align-self: flex-start;
-}
-
-.player-phase {
-  width: 100%;
-  max-width: 420px;
-  border-radius: 20px;
-  padding: 40px 24px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.player-phase.phase-work {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.player-phase.phase-rest {
-  background: var(--hl-blue);
-  border-color: var(--border-strong);
-}
-
-.player-phase-label {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.85rem;
-  color: var(--ink-soft);
-}
-
-.player-exercise-name {
-  font-family: var(--serif);
-  font-size: 1.6rem;
-  margin-top: 8px;
-  min-height: 1.6em;
-}
-
-.player-countdown {
-  font-size: 4.5rem;
-  font-variant-numeric: tabular-nums;
-  margin-top: 12px;
-  line-height: 1;
-}
-
-.player-progress {
-  color: var(--ink-soft);
-  font-size: 0.85rem;
-}
-
-.player-controls {
+.tabata-topbar {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  flex-shrink: 0;
 }
 
-.player-play-btn {
-  min-width: 110px;
+.tabata-icon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #f4f4f4;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.player-hint {
-  max-width: 420px;
-  color: var(--ink-faint);
-  font-size: 0.78rem;
+.tabata-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
 }
 
-.player-finished {
+.tabata-icon-btn-spacer {
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.tabata-title {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-size: 1rem;
+}
+
+.tabata-summary {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  padding: 16px;
+}
+
+.tabata-summary-row {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 2px;
+}
+
+.tabata-summary-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #f2ff4d;
+}
+
+.tabata-summary-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: #9a9a9a;
+}
+
+.tabata-exercise-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tabata-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tabata-preview-index {
+  color: #666;
+  font-weight: 700;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.tabata-preview-name {
+  flex: 1;
+  font-weight: 700;
+  font-size: 1.02rem;
+}
+
+.tabata-preview-times {
+  color: #9a9a9a;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.tabata-start-btn {
+  margin: 16px 20px calc(20px + env(safe-area-inset-bottom));
+  padding: 18px;
+  border: none;
+  border-radius: 16px;
+  background: #f2ff4d;
+  color: #0d0d0d;
+  font-weight: 900;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tabata-start-btn:hover {
+  background: #e6f52e;
+}
+
+.tabata-phase-band {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.tabata-phase-band.phase-prepare {
+  background: #f2ff4d;
+  color: #0d0d0d;
+}
+
+.tabata-phase-band.phase-work {
+  background: #63e06b;
+  color: #0d0d0d;
+}
+
+.tabata-phase-band.phase-rest {
+  background: #ff5a52;
+  color: #0d0d0d;
+}
+
+.tabata-phase-label {
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.06em;
+}
+
+.tabata-clock {
+  font-weight: 900;
+  font-size: 6rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.tabata-exercise-name {
+  font-weight: 800;
+  font-size: 1.3rem;
+}
+
+.tabata-next {
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+.tabata-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+
+.tabata-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 90px;
+}
+
+.tabata-stat-value {
+  font-size: 2.2rem;
+  font-weight: 900;
+}
+
+.tabata-stat-round {
+  color: #6cb8ff;
+}
+
+.tabata-stat-exercise {
+  color: #f2ff4d;
+}
+
+.tabata-stat-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: #9a9a9a;
+  text-align: center;
+}
+
+.tabata-play-btn {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 3px solid #f2ff4d;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f2ff4d;
+  font-size: 1.6rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tabata-play-btn:hover {
+  background: rgba(242, 255, 77, 0.12);
+}
+
+.tabata-finished {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.tabata-finished-heading {
+  font-weight: 900;
+  font-size: 1.8rem;
+  letter-spacing: 0.04em;
+  color: #f2ff4d;
+  text-align: center;
+  padding: 0 20px;
 }
